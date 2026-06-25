@@ -473,6 +473,134 @@ tbody tr:hover td{background:var(--bg2);cursor:pointer}
     <div class="card"><div class="card-title">Backup history</div><div id="backup-history" style="font-size:13px;color:var(--text3)">No backups this session.</div></div>
   </div>
 
+  <!-- LOT SIZE CALCULATOR -->
+  <div class="view" id="view-calc">
+    <div class="shdr" style="margin-bottom:16px">
+      <span class="stitle">Lot size calculator</span>
+      <span style="font-size:12px;color:var(--text3)">Position sizing — fills into Log Trade automatically</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+      <!-- Inputs -->
+      <div>
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-title">Inputs</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="fgrp">
+              <label class="flabel">Contract size</label>
+              <input class="fi" id="calc-contract" type="number" value="1" step="any" oninput="runCalc()" placeholder="1">
+              <div style="font-size:11px;color:var(--text3);margin-top:3px">1 for crypto/stocks · 100000 for standard Forex lots</div>
+            </div>
+            <div class="fgrp">
+              <label class="flabel">Account equity ($)</label>
+              <input class="fi" id="calc-equity" type="number" oninput="runCalc()" placeholder="Auto-fills from current account">
+            </div>
+            <div class="fgrp">
+              <label class="flabel">Risk %</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input class="fi" id="calc-risk" type="number" value="0.15" step="0.01" min="0.01" max="100" oninput="runCalc()" style="flex:1">
+                <div style="display:flex;gap:4px;flex-shrink:0">
+                  <button class="btn btn-sm" onclick="setCalcRisk(0.15)">0.15%</button>
+                  <button class="btn btn-sm" onclick="setCalcRisk(0.5)">0.5%</button>
+                  <button class="btn btn-sm" onclick="setCalcRisk(1)">1%</button>
+                </div>
+              </div>
+            </div>
+            <div class="fgrp">
+              <label class="flabel">Direction</label>
+              <select class="fs" id="calc-dir" onchange="runCalc()">
+                <option value="long">Long (Buy)</option>
+                <option value="short">Short (Sell)</option>
+              </select>
+            </div>
+            <div class="fgrp">
+              <label class="flabel">Entry price</label>
+              <input class="fi" id="calc-entry" type="number" step="any" oninput="runCalc()" placeholder="0.00">
+            </div>
+            <div class="fgrp">
+              <label class="flabel">Stop loss price</label>
+              <input class="fi" id="calc-sl" type="number" step="any" oninput="runCalc()" placeholder="0.00">
+            </div>
+            <div class="fgrp">
+              <label class="flabel">Take profit price <span style="font-weight:400;color:var(--text3)">(optional — auto below)</span></label>
+              <input class="fi" id="calc-tp" type="number" step="any" oninput="runCalc()" placeholder="0.00">
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-green" style="width:100%;justify-content:center;padding:10px" onclick="calcSendToTrade()">
+          <i class="ti ti-arrow-right"></i> Use values in Log Trade
+        </button>
+      </div>
+
+      <!-- Results -->
+      <div>
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-title">Position sizing</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg2);border-radius:var(--r)">
+              <span style="font-size:12px;color:var(--text2);font-weight:500">$ at risk</span>
+              <span style="font-size:18px;font-weight:700;color:var(--red)" id="calc-risk-dollar">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--green);border-radius:var(--r)">
+              <span style="font-size:13px;color:#fff;font-weight:700">Quantity / Lot size</span>
+              <span style="font-size:24px;font-weight:800;color:#fff;letter-spacing:-.5px" id="calc-qty">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg2);border-radius:var(--r)">
+              <span style="font-size:12px;color:var(--text2);font-weight:500">Order value</span>
+              <span style="font-size:18px;font-weight:700;color:var(--text)" id="calc-order-val">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg2);border-radius:var(--r)">
+              <span style="font-size:12px;color:var(--text2);font-weight:500">Stop distance</span>
+              <span style="font-size:16px;font-weight:600;color:var(--text)" id="calc-sl-pips">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-title">Take profit levels</div>
+          <div style="display:grid;grid-template-columns:48px 1fr 80px 90px;gap:0;padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3)">
+            <span></span><span>Price</span><span>Distance</span><span>Profit</span>
+          </div>
+          <div style="padding:9px 12px;border-top:0.5px solid var(--border);display:grid;grid-template-columns:48px 1fr 80px 90px;align-items:center;gap:4px">
+            <span class="tag tw2" style="width:fit-content;font-size:11px">TP 1</span>
+            <span style="font-size:14px;font-weight:600" id="calc-tp1-price">—</span>
+            <span style="font-size:12px;color:var(--text2)" id="calc-tp1-pips">—</span>
+            <span style="font-size:14px;font-weight:700;color:var(--green)" id="calc-tp1-profit">—</span>
+          </div>
+          <div style="padding:9px 12px;border-top:0.5px solid var(--border);display:grid;grid-template-columns:48px 1fr 80px 90px;align-items:center;gap:4px">
+            <span class="tag tw2" style="width:fit-content;font-size:11px">TP 2</span>
+            <span style="font-size:14px;font-weight:600" id="calc-tp2-price">—</span>
+            <span style="font-size:12px;color:var(--text2)" id="calc-tp2-pips">—</span>
+            <span style="font-size:14px;font-weight:700;color:var(--green)" id="calc-tp2-profit">—</span>
+          </div>
+          <div style="padding:9px 12px;border-top:0.5px solid var(--border);display:grid;grid-template-columns:48px 1fr 80px 90px;align-items:center;gap:4px">
+            <span class="tag tw2" style="width:fit-content;font-size:11px">TP 3</span>
+            <span style="font-size:14px;font-weight:600" id="calc-tp3-price">—</span>
+            <span style="font-size:12px;color:var(--text2)" id="calc-tp3-pips">—</span>
+            <span style="font-size:14px;font-weight:700;color:var(--green)" id="calc-tp3-profit">—</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">R:R at each TP</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div style="text-align:center;padding:10px;background:var(--bg2);border-radius:var(--r)">
+              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">TP 1</div>
+              <div style="font-size:20px;font-weight:700;color:var(--text)" id="calc-rr1">—</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:var(--bg2);border-radius:var(--r)">
+              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">TP 2</div>
+              <div style="font-size:20px;font-weight:700;color:var(--text)" id="calc-rr2">—</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:var(--bg2);border-radius:var(--r)">
+              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">TP 3</div>
+              <div style="font-size:20px;font-weight:700;color:var(--text)" id="calc-rr3">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- TRADE MODAL -->
@@ -1955,8 +2083,133 @@ function sw(v,btn){
   if(v==='dashboard')renderDash();
   if(v==='trades')filterTrades(filterVal);
   if(v==='import')document.getElementById('import-acct-label').textContent=curAcct().name;
+  if(v==='calc')initCalcView();
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ══════════════════════════════════════════════
+// LOT SIZE CALCULATOR
+// Exact formula from uploaded Excel:
+//   Quantity = Equity * (Risk/100) / (|Entry - SL| * ContractSize)
+//   Order Value = Quantity * Entry
+//   TP1 = Entry ± stopDist   (+ for long, - for short)
+//   TP2 = TP1 ± stopDist
+//   TP3 = TP2 ± stopDist
+//   TP P&L = |TP - Entry| * Quantity * ContractSize
+// ══════════════════════════════════════════════
+function runCalc(){
+  const contract = parseFloat(document.getElementById('calc-contract').value) || 1;
+  const equity   = parseFloat(document.getElementById('calc-equity').value) || acctCurrentEquity(curAcct()) || 0;
+  const riskPct  = parseFloat(document.getElementById('calc-risk').value) || 0;
+  const entry    = parseFloat(document.getElementById('calc-entry').value) || 0;
+  const sl       = parseFloat(document.getElementById('calc-sl').value) || 0;
+  const tpManual = parseFloat(document.getElementById('calc-tp').value) || 0;
+  const dir      = document.getElementById('calc-dir').value;
+
+  // Sync equity field with account if blank
+  const eqEl = document.getElementById('calc-equity');
+  if(!eqEl.value && equity>0) eqEl.placeholder = 'Current: $'+equity.toLocaleString();
+
+  // Need equity, risk, entry, SL to calculate
+  if(!equity||!riskPct||!entry||!sl||sl===entry){
+    clearCalcResults(); return;
+  }
+
+  const riskDollar = parseFloat((equity * riskPct / 100).toFixed(2));
+  const stopDist   = Math.abs(entry - sl);
+  const qty        = parseFloat((riskDollar / (stopDist * contract)).toFixed(6));
+  const orderVal   = parseFloat((qty * entry).toFixed(2));
+
+  // Determine direction: if SL < entry → long (go up), if SL > entry → short (go down)
+  const isLong = sl < entry;
+  // TP levels: each step = stopDist (1R, 2R, 3R)
+  const tp1 = parseFloat((isLong ? entry + stopDist : entry - stopDist).toPrecision(10));
+  const tp2 = parseFloat((isLong ? entry + stopDist*2 : entry - stopDist*2).toPrecision(10));
+  const tp3 = parseFloat((isLong ? entry + stopDist*3 : entry - stopDist*3).toPrecision(10));
+
+  // TP P&L: |TP - Entry| * qty * contract
+  const tp1pnl = parseFloat((Math.abs(tp1-entry) * qty * contract).toFixed(2));
+  const tp2pnl = parseFloat((Math.abs(tp2-entry) * qty * contract).toFixed(2));
+  const tp3pnl = parseFloat((Math.abs(tp3-entry) * qty * contract).toFixed(2));
+
+  // RR ratios
+  const rr1 = (Math.abs(tp1-entry)/stopDist).toFixed(2);
+  const rr2 = (Math.abs(tp2-entry)/stopDist).toFixed(2);
+  const rr3 = (Math.abs(tp3-entry)/stopDist).toFixed(2);
+
+  // Format price with enough decimals
+  const decimals = entry < 0.01 ? 8 : entry < 1 ? 6 : entry < 10 ? 5 : entry < 100 ? 4 : 2;
+  const fmt  = n => n.toFixed(decimals);
+  const fmtD = n => n.toFixed(decimals); // distance
+
+  // Results
+  const cur = currSymbol(curAcct().currency||'USD');
+  document.getElementById('calc-risk-dollar').textContent = cur+riskDollar.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('calc-qty').textContent = qty >= 1 ? qty.toLocaleString(undefined,{maximumFractionDigits:4}) : qty.toFixed(6);
+  document.getElementById('calc-order-val').textContent = cur+orderVal.toLocaleString(undefined,{maximumFractionDigits:2});
+  document.getElementById('calc-sl-pips').textContent = fmtD(stopDist) + ' (' + (stopDist*10000).toFixed(1) + ' pips)';
+
+  document.getElementById('calc-tp1-price').textContent  = fmt(tp1);
+  document.getElementById('calc-tp1-pips').textContent   = fmtD(stopDist*1);
+  document.getElementById('calc-tp1-profit').textContent = cur+tp1pnl.toLocaleString(undefined,{maximumFractionDigits:2});
+
+  document.getElementById('calc-tp2-price').textContent  = fmt(tp2);
+  document.getElementById('calc-tp2-pips').textContent   = fmtD(stopDist*2);
+  document.getElementById('calc-tp2-profit').textContent = cur+tp2pnl.toLocaleString(undefined,{maximumFractionDigits:2});
+
+  document.getElementById('calc-tp3-price').textContent  = fmt(tp3);
+  document.getElementById('calc-tp3-pips').textContent   = fmtD(stopDist*3);
+  document.getElementById('calc-tp3-profit').textContent = cur+tp3pnl.toLocaleString(undefined,{maximumFractionDigits:2});
+
+  document.getElementById('calc-rr1').textContent = '1:'+rr1;
+  document.getElementById('calc-rr2').textContent = '1:'+rr2;
+  document.getElementById('calc-rr3').textContent = '1:'+rr3;
+
+  // Store last calc for "Use in Log Trade"
+  window._lastCalc = {qty, entry, sl, tp1, tp2, riskPct, riskDollar, dir};
+}
+
+function clearCalcResults(){
+  ['calc-risk-dollar','calc-qty','calc-order-val','calc-sl-pips',
+   'calc-tp1-price','calc-tp1-pips','calc-tp1-profit',
+   'calc-tp2-price','calc-tp2-pips','calc-tp2-profit',
+   'calc-tp3-price','calc-tp3-pips','calc-tp3-profit',
+   'calc-rr1','calc-rr2','calc-rr3'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.textContent='—';
+  });
+  window._lastCalc=null;
+}
+
+function setCalcRisk(pct){
+  document.getElementById('calc-risk').value=pct;
+  runCalc();
+}
+
+function calcSendToTrade(){
+  const c=window._lastCalc;
+  if(!c){alert('Complete the calculator fields first.');return;}
+  // Open the trade modal and pre-fill fields
+  openTradeModal();
+  setTimeout(()=>{
+    if(c.entry) document.getElementById('f-entry').value=c.entry;
+    if(c.sl)    document.getElementById('f-sl').value=c.sl;
+    if(c.tp1)   document.getElementById('f-tp').value=c.tp1;
+    if(c.qty)   document.getElementById('f-size').value=c.qty;
+    if(c.riskPct) document.getElementById('f-risk-pct').value=c.riskPct;
+    document.getElementById('f-direction').value=c.dir||'long';
+    calcRR();
+  },80);
+}
+
+// Auto-fill equity when switching to calculator tab
+function initCalcView(){
+  const eq=acctCurrentEquity(curAcct());
+  if(eq>0){
+    const el=document.getElementById('calc-equity');
+    if(el&&!el.value) el.value=eq;
+  }
+  runCalc();
+}
 
 boot();
 </script>
