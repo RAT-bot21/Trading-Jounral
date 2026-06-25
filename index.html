@@ -237,9 +237,14 @@ tbody tr:hover td{background:var(--bg2);cursor:pointer}
   <!-- TRADES -->
   <div class="view" id="view-trades">
     <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:14px 18px 0" class="shdr">
-        <span class="stitle" id="trades-count">All trades</span>
-        <div style="display:flex;gap:8px">
+      <div style="padding:14px 18px 8px" class="shdr">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="stitle" id="trades-count">All trades</span>
+          <span id="selected-count" style="font-size:12px;color:var(--text3);display:none"></span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-sm btn-red" id="delete-selected-btn" style="display:none" onclick="deleteSelectedTrades()"><i class="ti ti-trash"></i> Delete selected</button>
+          <button class="btn btn-sm btn-red" onclick="deleteAllTrades()" style="opacity:.7"><i class="ti ti-trash"></i> Delete all</button>
           <select class="fs" style="width:auto;font-size:12px;padding:5px 10px" onchange="filterTrades(this.value)">
             <option value="all">All</option><option value="win">Wins</option><option value="loss">Losses</option><option value="open">Open</option>
           </select>
@@ -484,12 +489,32 @@ tbody tr:hover td{background:var(--bg2);cursor:pointer}
       <div class="fgrp"><label class="flabel">Exit price</label><input class="fi" id="f-exit" type="number" placeholder="0.00 (blank if open)" oninput="calcRR()"></div>
       <div class="fgrp"><label class="flabel">Stop loss</label><input class="fi" id="f-sl" type="number" placeholder="0.00" oninput="calcRR()"></div>
       <div class="fgrp"><label class="flabel">Take profit</label><input class="fi" id="f-tp" type="number" placeholder="0.00" oninput="calcRR()"></div>
-      <div class="fgrp"><label class="flabel">Size / units</label><input class="fi" id="f-size" type="number" placeholder="shares, lots…"></div>
-      <div class="fgrp"><label class="flabel">P&amp;L ($)</label><input class="fi" id="f-pnl" type="number" placeholder="auto or manual"></div>
+      <div class="fgrp"><label class="flabel">Size / units</label><input class="fi" id="f-size" type="number" placeholder="shares, lots…" oninput="calcRR()"></div>
+      <div class="fgrp"><label class="flabel">P&amp;L ($)</label><input class="fi" id="f-pnl" type="number" placeholder="auto-calculated"></div>
+      <div class="fgrp"><label class="flabel">Risk % of equity</label><input class="fi" id="f-risk-pct" type="number" step="0.1" placeholder="e.g. 1.0" oninput="calcRR()"></div>
+      <div class="fgrp"><label class="flabel">$ at risk</label><input class="fi" id="f-risk-dollar" type="number" placeholder="auto from risk %" readonly style="background:var(--bg2)"></div>
     </div>
   </div>
-  <div class="msec"><div class="mstitle">Risk / reward</div>
-    <div class="rr-box"><span style="font-size:13px;color:var(--text2)">Calculated R:R</span><span class="rr-num" id="rr-val">—</span><span style="font-size:12px;color:var(--text3)" id="rr-hint"></span></div>
+  <div class="msec"><div class="mstitle">Risk / reward &amp; position sizing</div>
+    <div class="rr-box" style="flex-wrap:wrap;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">R:R ratio</span>
+        <span class="rr-num" id="rr-val">—</span>
+        <span style="font-size:11px;color:var(--text3)" id="rr-hint"></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px" id="rr-equity-block" style="display:none">
+        <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Account equity</span>
+        <span style="font-size:16px;font-weight:600;color:var(--text)" id="rr-equity-val">—</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px" id="rr-risk-block" style="display:none">
+        <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">$ risked</span>
+        <span style="font-size:16px;font-weight:600;color:var(--red)" id="rr-risk-val">—</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px" id="rr-target-block" style="display:none">
+        <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Potential profit</span>
+        <span style="font-size:16px;font-weight:600;color:var(--green)" id="rr-target-val">—</span>
+      </div>
+    </div>
   </div>
   <div class="msec"><div class="mstitle">Chart image</div>
     <div class="img-drop" id="img-drop" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleImgDrop(event)">
@@ -525,12 +550,19 @@ tbody tr:hover td{background:var(--bg2);cursor:pointer}
   <div id="acct-list-render"></div>
   <div style="margin-top:16px;padding-top:16px;border-top:0.5px solid var(--border)">
     <div class="mstitle">Add new account</div>
-    <div class="fg3">
-      <div class="fgrp"><label class="flabel">Name</label><input class="fi" id="new-acct-name" placeholder="e.g. Swing, Crypto"></div>
-      <div class="fgrp"><label class="flabel">Broker</label><input class="fi" id="new-acct-broker" placeholder="e.g. MT5, Bybit"></div>
-      <div class="fgrp"><label class="flabel">Color</label><input type="color" class="fi" id="new-acct-color" value="#1D9E75" style="padding:4px;height:38px"></div>
+    <div class="fg" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+      <div class="fgrp"><label class="flabel">Account name</label><input class="fi" id="new-acct-name" placeholder="e.g. Swing, Crypto"></div>
+      <div class="fgrp"><label class="flabel">Broker / Platform</label><input class="fi" id="new-acct-broker" placeholder="e.g. MT5, Bybit"></div>
+      <div class="fgrp"><label class="flabel">Initial equity ($)</label><input class="fi" type="number" id="new-acct-equity" placeholder="e.g. 10000"></div>
+      <div class="fgrp"><label class="flabel">Currency</label>
+        <select class="fs" id="new-acct-currency">
+          <option value="USD">USD — $</option><option value="EUR">EUR — €</option><option value="GBP">GBP — £</option>
+          <option value="AUD">AUD — A$</option><option value="CAD">CAD — C$</option><option value="JPY">JPY — ¥</option><option value="CHF">CHF — Fr</option>
+        </select>
+      </div>
     </div>
-    <div style="margin-top:12px;text-align:right"><button class="btn btn-green" onclick="addAccount()"><i class="ti ti-plus"></i> Add account</button></div>
+    <div class="fgrp" style="margin-bottom:10px"><label class="flabel">Colour</label><input type="color" class="fi" id="new-acct-color" value="#1D9E75" style="padding:4px;height:38px;width:80px"></div>
+    <div style="text-align:right"><button class="btn btn-green" onclick="addAccount()"><i class="ti ti-plus"></i> Add account</button></div>
   </div>
  </div>
 </div>
@@ -586,7 +618,7 @@ function persist(){localStorage.setItem(STORE,JSON.stringify(DB));}
 
 function seed(){
   const id1='acct_main',id2='acct_crypto';
-  return{accounts:[{id:id1,name:'Main (MT5)',broker:'MT5',color:'#1D9E75'},{id:id2,name:'Bybit',broker:'Bybit',color:'#F7A600'}],
+  return{accounts:[{id:id1,name:'Main (MT5)',broker:'MT5',color:'#1D9E75',equity:10000,currency:'USD'},{id:id2,name:'Bybit',broker:'Bybit',color:'#F7A600',equity:5000,currency:'USD'}],
     trades:{[id1]:[
       {id:1,symbol:'EURUSD',date:'2024-06-01',direction:'long',type:'Forex',entry:1.0820,exit:1.0880,sl:1.0790,tp:1.0900,size:1,pnl:600,strategy:'Breakout',emotion:'Calm & focused',notes:'Clean breakout above resistance.',status:'win',img:null,source:'manual'},
       {id:2,symbol:'GBPUSD',date:'2024-06-05',direction:'short',type:'Forex',entry:1.2720,exit:1.2650,sl:1.2760,tp:1.2640,size:0.5,pnl:350,strategy:'VWAP rejection',emotion:'Calm & focused',notes:'Perfect setup. Hit TP.',status:'win',img:null,source:'manual'},
@@ -638,23 +670,55 @@ function toggleAcctMenu(e){e.stopPropagation();document.getElementById('acctMenu
 function switchAccount(id){currentAccountId=id;document.getElementById('acctMenu').classList.remove('open');renderAcctSwitcher();renderAll();}
 function openAcctModal(){document.getElementById('acctMenu').classList.remove('open');renderAcctList();document.getElementById('acct-modal').classList.add('open');}
 function closeAcctModal(){document.getElementById('acct-modal').classList.remove('open');}
+function currSymbol(c){return{USD:'$',EUR:'€',GBP:'£',AUD:'A$',CAD:'C$',JPY:'¥',CHF:'Fr'}[c]||'$';}
+function acctCurrentEquity(a){
+  const tl=DB.trades[a.id]||[];
+  const closed=tl.filter(t=>t.status!=='open');
+  const pnl=closed.reduce((s,t)=>s+(t.pnl||0),0);
+  return (a.equity||0)+pnl;
+}
 function renderAcctList(){
-  document.getElementById('acct-list-render').innerHTML=DB.accounts.map(a=>`
-    <div class="acct-list-item">
-      <span style="width:10px;height:10px;border-radius:50%;background:${a.color};display:inline-block"></span>
-      <span style="flex:1;font-size:13px;font-weight:600;margin-left:8px">${a.name}</span>
-      <span style="font-size:12px;color:var(--text3);margin-right:10px">${a.broker||''}</span>
-      <span style="font-size:12px;color:var(--text3);margin-right:10px">${(DB.trades[a.id]||[]).length} trades</span>
+  document.getElementById('acct-list-render').innerHTML=DB.accounts.map(a=>{
+    const cur=currSymbol(a.currency||'USD');
+    const eq=a.equity?`${cur}${Number(a.equity).toLocaleString()}`:'Not set';
+    const currentEq=acctCurrentEquity(a);
+    const pnl=currentEq-(a.equity||0);
+    const pnlStr=a.equity?(` → ${cur}${currentEq.toLocaleString(undefined,{maximumFractionDigits:0})}`):'';
+    return`<div class="acct-list-item" style="flex-wrap:wrap;gap:8px">
+      <span style="width:10px;height:10px;border-radius:50%;background:${a.color};display:inline-block;flex-shrink:0"></span>
+      <span style="flex:1;font-size:13px;font-weight:600">${a.name}</span>
+      <span style="font-size:11px;color:var(--text3)">${a.broker||''}</span>
+      <span style="font-size:11px;color:var(--text3)">${eq}${pnlStr}</span>
+      <span style="font-size:11px;color:var(--text3)">${(DB.trades[a.id]||[]).length} trades</span>
+      <button class="btn btn-sm" onclick="openEditAcctEquity('${a.id}')" title="Edit equity"><i class="ti ti-pencil"></i></button>
       ${DB.accounts.length>1?`<button class="btn btn-sm btn-red" onclick="removeAccount('${a.id}')"><i class="ti ti-trash"></i></button>`:''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+function openEditAcctEquity(id){
+  const a=DB.accounts.find(x=>x.id===id);if(!a)return;
+  const eq=prompt(`Set initial equity for "${a.name}" (current: ${a.equity||0}):`,a.equity||'');
+  if(eq===null)return;
+  a.equity=parseFloat(eq)||0;
+  const cur=prompt('Currency (USD/EUR/GBP/AUD/CAD/JPY/CHF):',a.currency||'USD');
+  if(cur!==null) a.currency=(cur.toUpperCase().trim()||'USD');
+  persist();renderAcctList();renderAcctSwitcher();renderAll();
 }
 function addAccount(){
   const name=document.getElementById('new-acct-name').value.trim();
   if(!name){alert('Enter an account name.');return;}
   const id='acct_'+Date.now();
-  DB.accounts.push({id,name,broker:document.getElementById('new-acct-broker').value.trim(),color:document.getElementById('new-acct-color').value});
+  const equity=parseFloat(document.getElementById('new-acct-equity').value)||0;
+  DB.accounts.push({id,name,
+    broker:document.getElementById('new-acct-broker').value.trim(),
+    color:document.getElementById('new-acct-color').value,
+    equity:equity,
+    currency:document.getElementById('new-acct-currency').value||'USD'
+  });
   DB.trades[id]=[];
-  document.getElementById('new-acct-name').value='';document.getElementById('new-acct-broker').value='';
+  document.getElementById('new-acct-name').value='';
+  document.getElementById('new-acct-broker').value='';
+  document.getElementById('new-acct-equity').value='';
   persist();renderAcctList();renderAcctSwitcher();
 }
 function removeAccount(id){
@@ -701,11 +765,24 @@ function renderDash(){
   if(document.getElementById('dash-view-label')) document.getElementById('dash-view-label').textContent=label;
   if(document.getElementById('dash-chart-title')) document.getElementById('dash-chart-title').textContent='Cumulative P&L — '+label;
   if(document.getElementById('dash-recent-label')) document.getElementById('dash-recent-label').textContent='Recent trades — '+label;
+  const acctObj=dashAcctFilter==='all'?null:DB.accounts.find(a=>a.id===dashAcctFilter);
+  const cur=currSymbol((acctObj?.currency)||'USD');
+  const startEq=acctObj?.equity||0;
+  const curEq=acctObj?acctCurrentEquity(acctObj):0;
+  const pctReturn=startEq>0?((s.pnl/startEq)*100):null;
+  const equityMetric=startEq>0?`
+    <div class="metric"><div class="mlabel">Current equity</div><div class="mval">${cur}${curEq.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div class="msub">Started at ${cur}${startEq.toLocaleString()}</div></div>
+    <div class="metric"><div class="mlabel">Return</div><div class="mval ${pctReturn>=0?'g':'r'}">${pctReturn>=0?'+':''}${pctReturn.toFixed(2)}%</div><div class="msub">on initial equity</div></div>`:'';
   document.getElementById('dash-metrics').innerHTML=`
-    <div class="metric"><div class="mlabel">Total P&L</div><div class="mval ${s.pnl>=0?'g':'r'}">${s.pnl>=0?'+':''}$${Math.abs(s.pnl).toFixed(0)}</div><div class="msub">${s.total} closed trades</div></div>
+    <div class="metric"><div class="mlabel">Total P&L</div><div class="mval ${s.pnl>=0?'g':'r'}">${s.pnl>=0?'+':''}${cur}${Math.abs(s.pnl).toFixed(0)}</div><div class="msub">${s.total} closed trades</div></div>
     <div class="metric"><div class="mlabel">Win rate</div><div class="mval">${s.wr.toFixed(1)}%</div><div class="msub">of closed trades</div></div>
-    <div class="metric"><div class="mlabel">Profit factor</div><div class="mval ${s.pf>=1?'g':'r'}">${s.pf.toFixed(2)}</div><div class="msub">avg win ÷ avg loss</div></div>
-    <div class="metric"><div class="mlabel">Open positions</div><div class="mval">${s.open}</div><div class="msub">active</div></div>`;
+    ${equityMetric||`<div class="metric"><div class="mlabel">Profit factor</div><div class="mval ${s.pf>=1?'g':'r'}">${s.pf.toFixed(2)}</div><div class="msub">avg win ÷ avg loss</div></div>
+    <div class="metric"><div class="mlabel">Open positions</div><div class="mval">${s.open}</div><div class="msub">active</div></div>`}
+    ${startEq>0?`<div class="metric"><div class="mlabel">Profit factor</div><div class="mval ${s.pf>=1?'g':'r'}">${s.pf.toFixed(2)}</div><div class="msub">avg win ÷ avg loss</div></div>
+    <div class="metric"><div class="mlabel">Open positions</div><div class="mval">${s.open}</div><div class="msub">active</div></div>`:''}
+  `;
+  // Override grid columns to fit extra metrics
+  document.getElementById('dash-metrics').style.gridTemplateColumns=startEq>0?'repeat(6,1fr)':'repeat(4,1fr)';
   const recent=[...trades].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
   renderDashTradeTable(recent);
   renderPnLChartForTrades(trades, acct?acct.color:null);
@@ -740,18 +817,29 @@ function renderAcctSummaryCards(){
   el.innerHTML=DB.accounts.map(a=>{
     const tl=DB.trades[a.id]||[];
     const s=stats(tl);
+    const cur=currSymbol(a.currency||'USD');
     const pnlSign=s.pnl>=0?'+':'';
+    const startEq=a.equity||0;
+    const curEq=startEq+s.pnl;
+    const pctReturn=startEq>0?((s.pnl/startEq)*100):null;
+    const pctStr=pctReturn!==null?`<span style="font-size:11px;font-weight:600;color:${pctReturn>=0?'var(--green)':'var(--red)'}">${pctReturn>=0?'+':''}${pctReturn.toFixed(2)}%</span>`:'';
+    const equityRow=startEq>0?`<div style="font-size:11px;color:var(--text3);margin-bottom:8px">
+      <span>Start: <strong style="color:var(--text2)">${cur}${startEq.toLocaleString()}</strong></span>
+      <span style="margin-left:8px">Now: <strong style="color:var(--text2)">${cur}${curEq.toLocaleString(undefined,{maximumFractionDigits:0})}</strong></span>
+      <span style="margin-left:8px">${pctStr}</span>
+    </div>`:'';
     return`<div onclick="setDashAcctFilter('${a.id}')" style="
       background:var(--bg);border:1.5px solid ${a.color}33;border-radius:var(--rl);
       padding:14px 16px;cursor:pointer;transition:border-color .15s;position:relative;overflow:hidden
     " onmouseover="this.style.borderColor='${a.color}'" onmouseout="this.style.borderColor='${a.color}33'">
       <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${a.color}"></div>
-      <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
         <span style="width:9px;height:9px;border-radius:50%;background:${a.color};display:inline-block;flex-shrink:0"></span>
         <span style="font-size:12px;font-weight:700;color:var(--text)">${a.name}</span>
         <span style="font-size:11px;color:var(--text3);margin-left:auto">${a.broker||''}</span>
       </div>
-      <div style="font-size:22px;font-weight:700;color:${s.pnl>=0?'var(--green)':'var(--red)'};margin-bottom:4px">${pnlSign}$${Math.abs(s.pnl).toFixed(0)}</div>
+      ${equityRow}
+      <div style="font-size:22px;font-weight:700;color:${s.pnl>=0?'var(--green)':'var(--red)'};margin-bottom:4px">${pnlSign}${cur}${Math.abs(s.pnl).toFixed(0)}</div>
       <div style="display:flex;gap:14px;font-size:11px;color:var(--text3)">
         <span>WR <strong style="color:var(--text2)">${s.wr.toFixed(0)}%</strong></span>
         <span>Trades <strong style="color:var(--text2)">${s.total}</strong></span>
@@ -825,26 +913,83 @@ function srcBadge(src){
   return'';
 }
 function tradeRowHTML(t){
+  return`<tr onclick="editTrade(${t.id})">${tradeRowInner(t)}</tr>`;
+}
+let selectedTradeIds=new Set();
+
+function renderTradeTable(id,list){
+  const el=document.getElementById(id);if(!el)return;
+  if(!list.length){el.innerHTML='<div class="empty"><i class="ti ti-file-off"></i>No trades yet. Log a trade or import from MT5 / Bybit.</div>';return;}
+  const withCheckbox=id==='all-trades';
+  const chkHdr=withCheckbox?'<th style="width:32px;padding:8px 10px"><input type="checkbox" id="select-all-chk" onchange="toggleSelectAll(this)" style="cursor:pointer"></th>':'';
+  const rows=list.map(t=>{
+    const chkCell=withCheckbox?`<td style="padding:0 10px" onclick="event.stopPropagation()"><input type="checkbox" class="trade-chk" data-id="${t.id}" ${selectedTradeIds.has(t.id)?'checked':''} onchange="onTradeCheck(this)" style="cursor:pointer"></td>`:'';
+    return`<tr onclick="editTrade(${t.id})" style="cursor:pointer">${chkCell}${tradeRowInner(t)}</tr>`;
+  }).join('');
+  el.innerHTML=`<table><thead><tr>${chkHdr}<th>Symbol</th><th>Date</th><th>Dir</th><th>Type</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th><th>Strategy</th><th>Source</th><th>Chart</th></tr></thead><tbody>${rows}</tbody></table>`;
+  if(withCheckbox) updateDeleteBar();
+}
+
+function tradeRowInner(t){
   const dir=t.direction==='long'?'<span class="tag tl">Long</span>':'<span class="tag ts">Short</span>';
   const res=t.status==='win'?'<span class="tag tw2">Win</span>':t.status==='loss'?'<span class="tag tlo">Loss</span>':'<span class="tag top">Open</span>';
   const pnl=t.pnl!=null?`<span class="${t.pnl>=0?'pp':'pn'}">${t.pnl>=0?'+':''}$${t.pnl.toFixed(0)}</span>`:'<span style="color:var(--text3)">—</span>';
   const imgIcon=t.img?`<img src="${t.img}" class="thumb" onclick="event.stopPropagation();viewImg(${t.id})" title="View chart">`:'';
-  return`<tr onclick="editTrade(${t.id})">
-    <td style="font-weight:700">${t.symbol}</td><td style="color:var(--text2)">${t.date}</td>
+  return`<td style="font-weight:700">${t.symbol}</td><td style="color:var(--text2)">${t.date}</td>
     <td>${dir}</td><td style="color:var(--text3);font-size:12px">${t.type}</td>
     <td>$${t.entry}</td><td>${t.exit?'$'+t.exit:'<span style="color:var(--text3)">—</span>'}</td>
     <td>${pnl}</td><td>${res}</td>
     <td style="color:var(--text2);font-size:12px">${t.strategy||'—'}</td>
-    <td>${srcBadge(t.source||'manual')}</td><td>${imgIcon}</td>
-  </tr>`;
+    <td>${srcBadge(t.source||'manual')}</td><td>${imgIcon}</td>`;
 }
-function renderTradeTable(id,list){
-  const el=document.getElementById(id);if(!el)return;
-  if(!list.length){el.innerHTML='<div class="empty"><i class="ti ti-file-off"></i>No trades yet. Log a trade or import from MT5 / Bybit.</div>';return;}
-  el.innerHTML=`<table><thead><tr><th>Symbol</th><th>Date</th><th>Dir</th><th>Type</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th><th>Strategy</th><th>Source</th><th>Chart</th></tr></thead><tbody>${list.map(tradeRowHTML).join('')}</tbody></table>`;
+
+function onTradeCheck(chk){
+  const id=parseInt(chk.dataset.id)||chk.dataset.id;
+  if(chk.checked) selectedTradeIds.add(id); else selectedTradeIds.delete(id);
+  updateDeleteBar();
+  // sync select-all state
+  const all=document.querySelectorAll('.trade-chk');
+  const allChk=document.getElementById('select-all-chk');
+  if(allChk) allChk.checked=all.length>0&&[...all].every(c=>c.checked);
 }
+
+function toggleSelectAll(masterChk){
+  document.querySelectorAll('.trade-chk').forEach(chk=>{
+    chk.checked=masterChk.checked;
+    const id=parseInt(chk.dataset.id)||chk.dataset.id;
+    if(masterChk.checked) selectedTradeIds.add(id); else selectedTradeIds.delete(id);
+  });
+  updateDeleteBar();
+}
+
+function updateDeleteBar(){
+  const n=selectedTradeIds.size;
+  const btn=document.getElementById('delete-selected-btn');
+  const cnt=document.getElementById('selected-count');
+  if(btn) btn.style.display=n>0?'inline-flex':'none';
+  if(cnt){cnt.textContent=n>0?`${n} selected`:'';cnt.style.display=n>0?'inline':'none';}
+}
+
+function deleteSelectedTrades(){
+  if(!selectedTradeIds.size) return;
+  if(!confirm(`Delete ${selectedTradeIds.size} selected trade${selectedTradeIds.size!==1?'s':''}? This cannot be undone.`)) return;
+  DB.trades[currentAccountId]=(DB.trades[currentAccountId]||[]).filter(t=>!selectedTradeIds.has(t.id));
+  selectedTradeIds.clear();
+  persist(); renderAll();
+}
+
+function deleteAllTrades(){
+  const count=(DB.trades[currentAccountId]||[]).length;
+  if(!count){alert('No trades to delete.');return;}
+  if(!confirm(`Delete all ${count} trades in this account? This cannot be undone.`)) return;
+  DB.trades[currentAccountId]=[];
+  selectedTradeIds.clear();
+  persist(); renderAll();
+}
+
 function filterTrades(v){
   filterVal=v;
+  selectedTradeIds.clear();
   const list=v==='all'?curTrades():curTrades().filter(t=>t.status===v);
   document.getElementById('trades-count').textContent=`${list.length} trade${list.length!==1?'s':''}`;
   renderTradeTable('all-trades',[...list].sort((a,b)=>b.date.localeCompare(a.date)));
@@ -1356,38 +1501,142 @@ function openTradeModal(){
   editTradeId=null;currentImgData=null;
   document.getElementById('modal-title').textContent='Log a trade — '+curAcct().name;
   document.getElementById('delete-btn').style.display='none';
-  ['symbol','entry','exit','sl','tp','size','pnl','strategy','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
+  ['symbol','entry','exit','sl','tp','size','pnl','risk-pct','risk-dollar','strategy','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
   document.getElementById('f-direction').value='long';document.getElementById('f-type').value='Stocks';document.getElementById('f-emotion').value='';
   document.getElementById('f-date').value=new Date().toISOString().slice(0,10);
   document.getElementById('rr-val').textContent='—';document.getElementById('rr-hint').textContent='';
   document.getElementById('img-preview').style.display='none';document.getElementById('img-clear-wrap').style.display='none';
   document.getElementById('trade-modal').classList.add('open');
+  calcRR();
 }
 function closeTradeModal(){document.getElementById('trade-modal').classList.remove('open');}
+
 function calcRR(){
-  const entry=parseFloat(document.getElementById('f-entry').value),sl=parseFloat(document.getElementById('f-sl').value),tp=parseFloat(document.getElementById('f-tp').value),exit=parseFloat(document.getElementById('f-exit').value),dir=document.getElementById('f-direction').value;
-  if(entry&&sl&&tp){const risk=Math.abs(entry-sl),reward=Math.abs(tp-entry);if(risk>0){const rr=(reward/risk).toFixed(2);document.getElementById('rr-val').textContent='1 : '+rr;document.getElementById('rr-hint').textContent=rr>=2?'✓ Strong setup':rr>=1?'Acceptable':'Poor R:R';if(exit&&!document.getElementById('f-pnl').value){const size=parseFloat(document.getElementById('f-size').value)||1;document.getElementById('f-pnl').value=((dir==='long'?exit-entry:entry-exit)*size).toFixed(2);}return;}}
-  document.getElementById('rr-val').textContent='—';document.getElementById('rr-hint').textContent='';
+  const entry=parseFloat(document.getElementById('f-entry').value)||0;
+  const sl=parseFloat(document.getElementById('f-sl').value)||0;
+  const tp=parseFloat(document.getElementById('f-tp').value)||0;
+  const exit=parseFloat(document.getElementById('f-exit').value)||0;
+  const size=parseFloat(document.getElementById('f-size').value)||0;
+  const dir=document.getElementById('f-direction').value;
+  const riskPct=parseFloat(document.getElementById('f-risk-pct').value)||0;
+  const acct=curAcct();
+  const equity=acctCurrentEquity(acct);
+  const cur=currSymbol(acct.currency||'USD');
+
+  // Show equity context
+  const eqBlock=document.getElementById('rr-equity-block');
+  const eqVal=document.getElementById('rr-equity-val');
+  const riskBlock=document.getElementById('rr-risk-block');
+  const riskVal=document.getElementById('rr-risk-val');
+  const targetBlock=document.getElementById('rr-target-block');
+  const targetVal=document.getElementById('rr-target-val');
+
+  if(equity>0&&eqVal){
+    eqBlock.style.display='flex';
+    eqVal.textContent=cur+equity.toLocaleString(undefined,{maximumFractionDigits:0});
+  } else if(eqBlock) eqBlock.style.display='none';
+
+  // Risk % → dollar amount
+  let riskDollar=0;
+  if(riskPct>0&&equity>0){
+    riskDollar=parseFloat((equity*riskPct/100).toFixed(2));
+    document.getElementById('f-risk-dollar').value=riskDollar;
+    if(riskBlock){riskBlock.style.display='flex';riskVal.textContent=cur+riskDollar.toLocaleString(undefined,{maximumFractionDigits:2});}
+  } else {
+    document.getElementById('f-risk-dollar').value='';
+    if(riskBlock) riskBlock.style.display='none';
+  }
+
+  // If we have entry + SL: derive position size from risk dollars
+  if(riskDollar>0&&entry>0&&sl>0&&size===0){
+    const priceDiff=Math.abs(entry-sl);
+    if(priceDiff>0){
+      const impliedSize=parseFloat((riskDollar/priceDiff).toFixed(4));
+      document.getElementById('f-size').value=impliedSize;
+    }
+  }
+
+  // Calculate R:R
+  if(entry&&sl&&tp){
+    const risk=Math.abs(entry-sl),reward=Math.abs(tp-entry);
+    if(risk>0){
+      const rr=(reward/risk).toFixed(2);
+      document.getElementById('rr-val').textContent='1 : '+rr;
+      document.getElementById('rr-hint').textContent=rr>=2?'✓ Strong setup':rr>=1?'Acceptable':'Poor R:R';
+      // Potential profit from risk dollars × RR
+      if(riskDollar>0&&targetBlock){
+        const potProfit=parseFloat((riskDollar*(reward/risk)).toFixed(2));
+        targetBlock.style.display='flex';
+        targetVal.textContent=cur+potProfit.toLocaleString(undefined,{maximumFractionDigits:2});
+      }
+      // Auto P&L from exit
+      if(exit&&!document.getElementById('f-pnl').value){
+        const sz=parseFloat(document.getElementById('f-size').value)||1;
+        document.getElementById('f-pnl').value=((dir==='long'?exit-entry:entry-exit)*sz).toFixed(2);
+      }
+      return;
+    }
+  }
+  // No full RR — still calc P&L if we have exit+entry+size
+  if(exit&&entry&&!document.getElementById('f-pnl').value){
+    const sz=parseFloat(document.getElementById('f-size').value)||1;
+    document.getElementById('f-pnl').value=((dir==='long'?exit-entry:entry-exit)*sz).toFixed(2);
+  }
+  if(!tp||!sl||!entry){
+    document.getElementById('rr-val').textContent='—';
+    document.getElementById('rr-hint').textContent='';
+    if(targetBlock) targetBlock.style.display='none';
+  }
 }
+
 function saveTrade(){
   const symbol=document.getElementById('f-symbol').value.trim().toUpperCase();if(!symbol){alert('Enter a symbol.');return;}
-  const exit=parseFloat(document.getElementById('f-exit').value)||null,pnl=parseFloat(document.getElementById('f-pnl').value),entry=parseFloat(document.getElementById('f-entry').value),dir=document.getElementById('f-direction').value;
-  let status='open';if(exit!=null)status=(!isNaN(pnl)?pnl:(dir==='long'?exit-entry:entry-exit))>=0?'win':'loss';
-  const trade={id:editTradeId||Date.now(),symbol,date:document.getElementById('f-date').value,direction:dir,type:document.getElementById('f-type').value,entry,exit,sl:parseFloat(document.getElementById('f-sl').value)||null,tp:parseFloat(document.getElementById('f-tp').value)||null,size:parseFloat(document.getElementById('f-size').value)||null,pnl:isNaN(pnl)?null:pnl,strategy:document.getElementById('f-strategy').value,emotion:document.getElementById('f-emotion').value,notes:document.getElementById('f-notes').value,status,img:currentImgData,source:'manual'};
+  const exit=parseFloat(document.getElementById('f-exit').value)||null;
+  const pnl=parseFloat(document.getElementById('f-pnl').value);
+  const entry=parseFloat(document.getElementById('f-entry').value);
+  const dir=document.getElementById('f-direction').value;
+  const riskPct=parseFloat(document.getElementById('f-risk-pct').value)||null;
+  const riskDollar=parseFloat(document.getElementById('f-risk-dollar').value)||null;
+  let status='open';
+  if(exit!=null) status=(!isNaN(pnl)?pnl:(dir==='long'?exit-entry:entry-exit))>=0?'win':'loss';
+  const trade={
+    id:editTradeId||Date.now(),symbol,
+    date:document.getElementById('f-date').value,
+    direction:dir,type:document.getElementById('f-type').value,
+    entry,exit,
+    sl:parseFloat(document.getElementById('f-sl').value)||null,
+    tp:parseFloat(document.getElementById('f-tp').value)||null,
+    size:parseFloat(document.getElementById('f-size').value)||null,
+    pnl:isNaN(pnl)?null:pnl,
+    riskPct,riskDollar,
+    strategy:document.getElementById('f-strategy').value,
+    emotion:document.getElementById('f-emotion').value,
+    notes:document.getElementById('f-notes').value,
+    status,img:currentImgData,source:'manual'
+  };
   if(!DB.trades[currentAccountId])DB.trades[currentAccountId]=[];
   if(editTradeId){const i=DB.trades[currentAccountId].findIndex(t=>t.id===editTradeId);if(i>-1)DB.trades[currentAccountId][i]=trade;}
   else DB.trades[currentAccountId].push(trade);
   persist();renderAll();closeTradeModal();
 }
+
 function editTrade(id){
   const t=curTrades().find(x=>x.id===id);if(!t)return;
   editTradeId=id;currentImgData=t.img||null;
   document.getElementById('modal-title').textContent='Edit — '+t.symbol;
   document.getElementById('delete-btn').style.display='inline-flex';
-  ['symbol','entry','exit','sl','tp','size','pnl','strategy','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value=t[f]==='0'?t[f]:(t[f]||'');});
-  document.getElementById('f-symbol').value=t.symbol;document.getElementById('f-date').value=t.date;document.getElementById('f-direction').value=t.direction;document.getElementById('f-type').value=t.type;document.getElementById('f-emotion').value=t.emotion||'';
-  const prev=document.getElementById('img-preview');if(t.img){prev.src=t.img;prev.style.display='block';document.getElementById('img-clear-wrap').style.display='block';}else{prev.style.display='none';document.getElementById('img-clear-wrap').style.display='none';}
-  calcRR();document.getElementById('trade-modal').classList.add('open');
+  ['symbol','entry','exit','sl','tp','size','pnl','strategy','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value=t[f]!=null?t[f]:'';});
+  if(t.riskPct) document.getElementById('f-risk-pct').value=t.riskPct;
+  document.getElementById('f-symbol').value=t.symbol;
+  document.getElementById('f-date').value=t.date;
+  document.getElementById('f-direction').value=t.direction;
+  document.getElementById('f-type').value=t.type;
+  document.getElementById('f-emotion').value=t.emotion||'';
+  const prev=document.getElementById('img-preview');
+  if(t.img){prev.src=t.img;prev.style.display='block';document.getElementById('img-clear-wrap').style.display='block';}
+  else{prev.style.display='none';document.getElementById('img-clear-wrap').style.display='none';}
+  calcRR();
+  document.getElementById('trade-modal').classList.add('open');
 }
 function deleteTrade(){if(!confirm('Delete this trade?'))return;DB.trades[currentAccountId]=DB.trades[currentAccountId].filter(t=>t.id!==editTradeId);persist();renderAll();closeTradeModal();}
 
