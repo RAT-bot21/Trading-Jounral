@@ -18,13 +18,75 @@
   --abg:#FAEEDA;--atxt:#633806;--pbg:#EEEDFE;--ptxt:#3C3489;
   --r:8px;--rl:12px;
 }
-@media(prefers-color-scheme:dark){:root{
+/* ── Themes ── */
+[data-theme="light"]{
+  --bg:#fff;--bg2:#f5f5f4;--bg3:#efefed;
+  --text:#1a1a18;--text2:#6b6b67;--text3:#9b9b97;
+  --border:rgba(0,0,0,0.1);--border2:rgba(0,0,0,0.18);
+  --gbg:#E1F5EE;--gtxt:#085041;--rbg:#FCEBEB;--rtxt:#791F1F;
+  --bbg:#E6F1FB;--btxt:#042C53;--abg:#FAEEDA;--atxt:#633806;--pbg:#EEEDFE;--ptxt:#3C3489;
+}
+[data-theme="dark"]{
   --bg:#1c1c1a;--bg2:#252523;--bg3:#2e2e2b;
   --text:#f0efed;--text2:#a0a09b;--text3:#6b6b67;
   --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.18);
   --gbg:#04342C;--gtxt:#9FE1CB;--rbg:#501313;--rtxt:#F7C1C1;
   --bbg:#042C53;--btxt:#B5D4F4;--abg:#412402;--atxt:#FAC775;--pbg:#26215C;--ptxt:#CECBF6;
-}}
+}
+[data-theme="midnight"]{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#0a0e14;
+  --text:#e6edf3;--text2:#8b949e;--text3:#484f58;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+  --green:#3FB950;--gd:#2DA042;--gbg:#0d2b14;--gtxt:#7ee787;
+  --red:#F85149;--rbg:#2a0a0a;--rtxt:#ffa198;
+  --blue:#58A6FF;--bbg:#0d2149;--btxt:#a5c8ff;
+  --abg:#271700;--atxt:#e3b341;--pbg:#1a0e2e;--ptxt:#c9b1ff;
+}
+[data-theme="forest"]{
+  --bg:#1a2018;--bg2:#222b1f;--bg3:#141a12;
+  --text:#d4e8d0;--text2:#8aaa84;--text3:#5a7a54;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+  --green:#5cb85c;--gd:#4a9e4a;--gbg:#1a3018;--gtxt:#90d890;
+  --red:#e05050;--rbg:#2a1010;--rtxt:#f0a0a0;
+  --blue:#5090d0;--bbg:#102030;--btxt:#90c0f0;
+  --abg:#2a2010;--atxt:#d0c060;--pbg:#201828;--ptxt:#c090e0;
+}
+[data-theme="ocean"]{
+  --bg:#0a1628;--bg2:#0f1f38;--bg3:#060e1c;
+  --text:#c8dff5;--text2:#7aA4c8;--text3:#3d6a8a;
+  --border:rgba(100,160,220,0.15);--border2:rgba(100,160,220,0.25);
+  --green:#00c9a7;--gd:#00a88a;--gbg:#002a24;--gtxt:#80e8d4;
+  --red:#ff6b6b;--rbg:#2a0a14;--rtxt:#ffaaaa;
+  --blue:#4ea8de;--bbg:#092040;--btxt:#8ec8f0;
+  --abg:#201800;--atxt:#f0c060;--pbg:#180828;--ptxt:#c890f0;
+}
+[data-theme="sunset"]{
+  --bg:#1e1214;--bg2:#281a1c;--bg3:#160c0e;
+  --text:#f0e0d0;--text2:#b08070;--text3:#705040;
+  --border:rgba(255,180,100,0.12);--border2:rgba(255,180,100,0.22);
+  --green:#f0a030;--gd:#d08020;--gbg:#2a1800;--gtxt:#f0c060;
+  --red:#e05060;--rbg:#2a0a10;--rtxt:#f0a0a8;
+  --blue:#8060e0;--bbg:#180828;--btxt:#c0a0f0;
+  --abg:#280800;--atxt:#f09040;--pbg:#200820;--ptxt:#e090d0;
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme]){
+    --bg:#1c1c1a;--bg2:#252523;--bg3:#2e2e2b;
+    --text:#f0efed;--text2:#a0a09b;--text3:#6b6b67;
+    --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.18);
+    --gbg:#04342C;--gtxt:#9FE1CB;--rbg:#501313;--rtxt:#F7C1C1;
+    --bbg:#042C53;--btxt:#B5D4F4;--abg:#412402;--atxt:#FAC775;--pbg:#26215C;--ptxt:#CECBF6;
+  }
+}
+/* Theme switcher */
+.theme-btn{background:none;border:0.5px solid var(--border2);border-radius:var(--r);padding:5px 9px;cursor:pointer;font-size:14px;color:var(--text2);transition:background .1s}
+.theme-btn:hover{background:var(--bg2)}
+.theme-menu{position:absolute;top:calc(100% + 6px);right:0;background:var(--bg);border:0.5px solid var(--border2);border-radius:var(--rl);width:200px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:300;display:none;padding:6px}
+.theme-menu.open{display:block}
+.theme-opt{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r);cursor:pointer;font-size:13px;color:var(--text);transition:background .1s}
+.theme-opt:hover{background:var(--bg2)}
+.theme-opt.active{background:var(--bg2);font-weight:600}
+.theme-swatch{width:14px;height:14px;border-radius:50%;flex-shrink:0;border:1.5px solid var(--border2)}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
 .topbar{background:var(--bg);border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:52px;position:sticky;top:0;z-index:50;gap:12px}
 .logo{font-size:15px;font-weight:700;letter-spacing:-.4px;white-space:nowrap}.logo span{color:var(--green)}
@@ -189,6 +251,7 @@ tbody tr:hover td{background:var(--bg2);cursor:pointer}
     <button class="nb" onclick="sw('import',this)"><i class="ti ti-file-import"></i> Import</button>
     <button class="nb" onclick="sw('notes',this)"><i class="ti ti-notebook"></i> Notes</button>
     <button class="nb" onclick="sw('cloud',this)"><i class="ti ti-cloud"></i> iCloud</button>
+    <button class="nb" onclick="sw('calc',this)"><i class="ti ti-calculator"></i> Lot Calc</button>
   </nav>
   <div class="topbar-right">
     <div class="acct-switcher" id="acctSwitcher">
@@ -198,6 +261,20 @@ tbody tr:hover td{background:var(--bg2);cursor:pointer}
         <i class="ti ti-chevron-down" style="font-size:12px"></i>
       </button>
       <div class="acct-menu" id="acctMenu"></div>
+    </div>
+    <!-- Theme switcher -->
+    <div style="position:relative" id="themeSwitcher">
+      <button class="theme-btn" onclick="toggleThemeMenu(event)" title="Change theme" id="themeBtn">🎨</button>
+      <div class="theme-menu" id="themeMenu">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:4px 10px 6px">Theme</div>
+        <div class="theme-opt" onclick="setTheme('light')"  id="th-light"><span class="theme-swatch" style="background:#fff;border-color:#ccc"></span> Light</div>
+        <div class="theme-opt" onclick="setTheme('dark')"   id="th-dark"><span class="theme-swatch" style="background:#252523"></span> Dark</div>
+        <div class="theme-opt" onclick="setTheme('midnight')" id="th-midnight"><span class="theme-swatch" style="background:#0d1117"></span> Midnight</div>
+        <div class="theme-opt" onclick="setTheme('forest')" id="th-forest"><span class="theme-swatch" style="background:#1a2018"></span> Forest</div>
+        <div class="theme-opt" onclick="setTheme('ocean')"  id="th-ocean"><span class="theme-swatch" style="background:#0a1628"></span> Ocean</div>
+        <div class="theme-opt" onclick="setTheme('sunset')" id="th-sunset"><span class="theme-swatch" style="background:#1e1214"></span> Sunset</div>
+        <div class="theme-opt" onclick="setTheme('system')" id="th-system"><span class="theme-swatch" style="background:linear-gradient(135deg,#fff 50%,#1c1c1a 50%)"></span> System</div>
+      </div>
     </div>
     <button class="btn" onclick="exportData()"><i class="ti ti-upload"></i> Export</button>
     <button class="btn btn-green" onclick="openTradeModal()"><i class="ti ti-plus"></i> Log trade</button>
@@ -740,7 +817,8 @@ function boot(){
   currentAccountId=DB.accounts[0].id;
   activeFolder=DB.notes.folders[0]?.id||null;
   persist();renderAcctSwitcher();renderAll();
-  document.addEventListener('click',e=>{if(!e.target.closest('.acct-switcher'))document.getElementById('acctMenu').classList.remove('open');});
+  document.addEventListener('click',e=>{if(!e.target.closest('.acct-switcher'))document.getElementById('acctMenu').classList.remove('open');if(!e.target.closest('#themeSwitcher'))document.getElementById('themeMenu').classList.remove('open');});
+  loadTheme();
 }
 function persist(){localStorage.setItem(STORE,JSON.stringify(DB));}
 
@@ -2086,6 +2164,30 @@ function sw(v,btn){
   if(v==='calc')initCalcView();
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── Theme system ───────────────────────────────
+const THEME_EMOJIS={light:'☀️',dark:'🌙',midnight:'🌌',forest:'🌿',ocean:'🌊',sunset:'🌅',system:'🎨'};
+function setTheme(name){
+  const root=document.documentElement;
+  if(name==='system') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme',name);
+  localStorage.setItem('tradelog_theme',name);
+  ['light','dark','midnight','forest','ocean','sunset','system'].forEach(t=>{
+    const el=document.getElementById('th-'+t);
+    if(el) el.classList.toggle('active',t===name);
+  });
+  const btn=document.getElementById('themeBtn');
+  if(btn) btn.textContent=THEME_EMOJIS[name]||'🎨';
+  Object.values(charts).forEach(c=>{try{c.update();}catch(e){}});
+}
+function loadTheme(){
+  const saved=localStorage.getItem('tradelog_theme')||'system';
+  setTheme(saved);
+}
+function toggleThemeMenu(e){
+  e.stopPropagation();
+  document.getElementById('themeMenu').classList.toggle('open');
+}
 
 // ══════════════════════════════════════════════
 // LOT SIZE CALCULATOR
