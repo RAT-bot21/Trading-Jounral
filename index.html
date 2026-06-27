@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TradeLog</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TradeLog">
+<meta name="theme-color" content="#1D9E75">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -322,8 +328,11 @@ tbody tr:hover td{background:var(--bg2);cursor:pointer}
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-sm btn-red" id="delete-selected-btn" style="display:none" onclick="deleteSelectedTrades()"><i class="ti ti-trash"></i> Delete selected</button>
           <button class="btn btn-sm btn-red" onclick="deleteAllTrades()" style="opacity:.7"><i class="ti ti-trash"></i> Delete all</button>
-          <select class="fs" style="width:auto;font-size:12px;padding:5px 10px" onchange="filterTrades(this.value)">
-            <option value="all">All</option><option value="win">Wins</option><option value="loss">Losses</option><option value="open">Open</option>
+          <select class="fs" id="trades-filter-sel" style="width:auto;font-size:12px;padding:5px 10px" onchange="filterTrades(this.value)">
+            <option value="all">All trades</option>
+            <option value="open">🟦 Open only</option>
+            <option value="win">🟩 Wins only</option>
+            <option value="loss">🟥 Losses only</option>
           </select>
         </div>
       </div>
@@ -687,9 +696,23 @@ tbody tr:hover td{background:var(--bg2);cursor:pointer}
   <div class="msec"><div class="mstitle">Trade details</div>
     <div class="fg">
       <div class="fgrp"><label class="flabel">Symbol</label><input class="fi" id="f-symbol" placeholder="AAPL, BTC/USD…"></div>
-      <div class="fgrp"><label class="flabel">Date</label><input class="fi" type="date" id="f-date"></div>
-      <div class="fgrp"><label class="flabel">Direction</label><select class="fs" id="f-direction"><option value="long">Long</option><option value="short">Short</option></select></div>
       <div class="fgrp"><label class="flabel">Asset type</label><select class="fs" id="f-type"><option>Stocks</option><option>Crypto</option><option>Forex</option><option>Options</option><option>Futures</option></select></div>
+      <div class="fgrp"><label class="flabel">Direction</label><select class="fs" id="f-direction"><option value="long">Long</option><option value="short">Short</option></select></div>
+      <div class="fgrp"><label class="flabel">Session</label>
+        <select class="fs" id="f-session">
+          <option value="">— select —</option>
+          <option>London</option><option>New York</option><option>Tokyo</option><option>Sydney</option>
+          <option>London/NY overlap</option><option>Pre-market</option><option>After-hours</option>
+        </select>
+      </div>
+      <div class="fgrp"><label class="flabel">Open date</label><input class="fi" type="date" id="f-date"></div>
+      <div class="fgrp"><label class="flabel">Open time</label><input class="fi" type="time" id="f-open-time" oninput="calcDuration()"></div>
+      <div class="fgrp"><label class="flabel">Close date <span style="font-weight:400;color:var(--text3)">(blank = open)</span></label><input class="fi" type="date" id="f-close-date" oninput="calcDuration()"></div>
+      <div class="fgrp"><label class="flabel">Close time</label><input class="fi" type="time" id="f-close-time" oninput="calcDuration()"></div>
+      <div class="fgrp full" id="duration-display-wrap" style="display:none">
+        <label class="flabel">Trade duration</label>
+        <div style="padding:8px 12px;background:var(--bg2);border-radius:var(--r);font-size:13px;color:var(--text2)" id="duration-display">—</div>
+      </div>
       <div class="fgrp"><label class="flabel">Entry price</label><input class="fi" id="f-entry" type="number" placeholder="0.00" oninput="calcRR()"></div>
       <div class="fgrp"><label class="flabel">Exit price</label><input class="fi" id="f-exit" type="number" placeholder="0.00 (blank if open)" oninput="calcRR()"></div>
       <div class="fgrp"><label class="flabel">Stop loss</label><input class="fi" id="f-sl" type="number" placeholder="0.00" oninput="calcRR()"></div>
@@ -989,7 +1012,10 @@ function renderDash(){
   `;
   // Override grid columns to fit extra metrics
   document.getElementById('dash-metrics').style.gridTemplateColumns=startEq>0?'repeat(6,1fr)':'repeat(4,1fr)';
-  const recent=[...trades].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  // Open trades first, then closed newest first
+  const opens=[...trades].filter(t=>t.status==='open').sort((a,b)=>b.date.localeCompare(a.date));
+  const closed=[...trades].filter(t=>t.status!=='open').sort((a,b)=>(b.closeDate||b.date).localeCompare(a.closeDate||a.date));
+  const recent=[...opens,...closed].slice(0,8);
   renderDashTradeTable(recent);
   renderPnLChartForTrades(trades, acct?acct.color:null);
 }
@@ -1123,16 +1149,29 @@ function tradeRowHTML(t){
 }
 let selectedTradeIds=new Set();
 
+function sortTradeList(list){
+  // Open trades first (sorted by date desc), then closed/won/lost newest first
+  const opens=[...list].filter(t=>t.status==='open').sort((a,b)=>b.date.localeCompare(a.date)||(b.openTime||'').localeCompare(a.openTime||''));
+  const closed=[...list].filter(t=>t.status!=='open').sort((a,b)=>{
+    const dateA=t=>((t.closeDate||t.date)+' '+(t.closeTime||t.openTime||'23:59'));
+    return dateA(b).localeCompare(dateA(a));
+  });
+  return [...opens,...closed];
+}
+
 function renderTradeTable(id,list){
   const el=document.getElementById(id);if(!el)return;
   if(!list.length){el.innerHTML='<div class="empty"><i class="ti ti-file-off"></i>No trades yet. Log a trade or import from MT5 / Bybit.</div>';return;}
   const withCheckbox=id==='all-trades';
+  const sorted=id==='all-trades'?sortTradeList(list):list;
   const chkHdr=withCheckbox?'<th style="width:32px;padding:8px 10px"><input type="checkbox" id="select-all-chk" onchange="toggleSelectAll(this)" style="cursor:pointer"></th>':'';
-  const rows=list.map(t=>{
+  const rows=sorted.map(t=>{
+    const isOpen=t.status==='open';
+    const rowStyle=isOpen?'cursor:pointer;background:var(--bbg)':'cursor:pointer';
     const chkCell=withCheckbox?`<td style="padding:0 10px" onclick="event.stopPropagation()"><input type="checkbox" class="trade-chk" data-id="${t.id}" ${selectedTradeIds.has(t.id)?'checked':''} onchange="onTradeCheck(this)" style="cursor:pointer"></td>`:'';
-    return`<tr onclick="editTrade(${t.id})" style="cursor:pointer">${chkCell}${tradeRowInner(t)}</tr>`;
+    return`<tr onclick="editTrade(${t.id})" style="${rowStyle}">${chkCell}${tradeRowInner(t)}</tr>`;
   }).join('');
-  el.innerHTML=`<table><thead><tr>${chkHdr}<th>Symbol</th><th>Date</th><th>Dir</th><th>Type</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th><th>Strategy</th><th>Source</th><th>Chart</th></tr></thead><tbody>${rows}</tbody></table>`;
+  el.innerHTML=`<table><thead><tr>${chkHdr}<th>Symbol</th><th>Opened</th><th>Dir</th><th>Type</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th><th>Duration</th><th>Strategy</th><th>Source</th><th>Chart</th></tr></thead><tbody>${rows}</tbody></table>`;
   if(withCheckbox) updateDeleteBar();
 }
 
@@ -1141,10 +1180,19 @@ function tradeRowInner(t){
   const res=t.status==='win'?'<span class="tag tw2">Win</span>':t.status==='loss'?'<span class="tag tlo">Loss</span>':'<span class="tag top">Open</span>';
   const pnl=t.pnl!=null?`<span class="${t.pnl>=0?'pp':'pn'}">${t.pnl>=0?'+':''}$${t.pnl.toFixed(0)}</span>`:'<span style="color:var(--text3)">—</span>';
   const imgIcon=t.img?`<img src="${t.img}" class="thumb" onclick="event.stopPropagation();viewImg(${t.id})" title="View chart">`:'';
-  return`<td style="font-weight:700">${t.symbol}</td><td style="color:var(--text2)">${t.date}</td>
+  // Date + time display
+  const openTime=t.openTime?`<span style="color:var(--text3);font-size:11px;display:block">${t.openTime}</span>`:'';
+  const dateCell=`<span style="font-size:12px">${t.date||'—'}</span>${openTime}`;
+  // Duration
+  const dur=t.duration?`<span style="font-size:11px;color:var(--text3)">${t.duration}</span>`:`<span style="color:var(--text3)">—</span>`;
+  // Session badge
+  const sess=t.session?`<span style="font-size:10px;padding:1px 6px;border-radius:100px;background:var(--pbg);color:var(--ptxt);font-weight:600">${t.session}</span>`:'';
+  return`<td style="font-weight:700;white-space:nowrap">${t.symbol}${sess?'<br>'+sess:''}</td>
+    <td style="white-space:nowrap">${dateCell}</td>
     <td>${dir}</td><td style="color:var(--text3);font-size:12px">${t.type}</td>
     <td>$${t.entry}</td><td>${t.exit?'$'+t.exit:'<span style="color:var(--text3)">—</span>'}</td>
     <td>${pnl}</td><td>${res}</td>
+    <td style="color:var(--text2);font-size:12px;white-space:nowrap">${dur}</td>
     <td style="color:var(--text2);font-size:12px">${t.strategy||'—'}</td>
     <td>${srcBadge(t.source||'manual')}</td><td>${imgIcon}</td>`;
 }
@@ -1198,7 +1246,7 @@ function filterTrades(v){
   selectedTradeIds.clear();
   const list=v==='all'?curTrades():curTrades().filter(t=>t.status===v);
   document.getElementById('trades-count').textContent=`${list.length} trade${list.length!==1?'s':''}`;
-  renderTradeTable('all-trades',[...list].sort((a,b)=>b.date.localeCompare(a.date)));
+  renderTradeTable('all-trades',list); // sortTradeList called inside renderTradeTable
 }
 
 // ── Charts ─────────────────────────────────────
@@ -1707,15 +1755,46 @@ function openTradeModal(){
   editTradeId=null;currentImgData=null;
   document.getElementById('modal-title').textContent='Log a trade — '+curAcct().name;
   document.getElementById('delete-btn').style.display='none';
-  ['symbol','entry','exit','sl','tp','size','pnl','risk-pct','risk-dollar','strategy','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
-  document.getElementById('f-direction').value='long';document.getElementById('f-type').value='Stocks';document.getElementById('f-emotion').value='';
+  ['symbol','entry','exit','sl','tp','size','pnl','risk-pct','risk-dollar','strategy','notes','open-time','close-date','close-time'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
+  document.getElementById('f-direction').value='long';document.getElementById('f-type').value='Stocks';document.getElementById('f-emotion').value='';document.getElementById('f-session').value='';
   document.getElementById('f-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('f-open-time').value=new Date().toTimeString().slice(0,5);
+  const dw=document.getElementById('duration-display-wrap');if(dw)dw.style.display='none';
   document.getElementById('rr-val').textContent='—';document.getElementById('rr-hint').textContent='';
   document.getElementById('img-preview').style.display='none';document.getElementById('img-clear-wrap').style.display='none';
   document.getElementById('trade-modal').classList.add('open');
   calcRR();
 }
 function closeTradeModal(){document.getElementById('trade-modal').classList.remove('open');}
+
+function computeDuration(openDate,openTime,closeDate,closeTime){
+  if(!openDate) return '';
+  const od=openDate+(openTime?' '+openTime+':00':'T00:00:00');
+  const cd=closeDate?(closeDate+(closeTime?' '+closeTime+':00':'T23:59:59')):null;
+  if(!cd) return 'Open';
+  try{
+    const ms=new Date(cd)-new Date(od);
+    if(ms<0) return '';
+    const mins=Math.floor(ms/60000);
+    const hrs=Math.floor(mins/60);
+    const days=Math.floor(hrs/24);
+    if(days>0) return `${days}d ${hrs%24}h`;
+    if(hrs>0) return `${hrs}h ${mins%60}m`;
+    return `${mins}m`;
+  }catch(e){return '';}
+}
+
+function calcDuration(){
+  const od=document.getElementById('f-date')?.value||'';
+  const ot=document.getElementById('f-open-time')?.value||'';
+  const cd=document.getElementById('f-close-date')?.value||'';
+  const ct=document.getElementById('f-close-time')?.value||'';
+  const dur=computeDuration(od,ot,cd,ct);
+  const dw=document.getElementById('duration-display-wrap');
+  const dd=document.getElementById('duration-display');
+  if(dw) dw.style.display=(dur&&dur!=='Open')?'block':'none';
+  if(dd) dd.textContent=dur||'—';
+}
 
 function calcRR(){
   const entry=parseFloat(document.getElementById('f-entry').value)||0;
@@ -1805,9 +1884,15 @@ function saveTrade(){
   const riskDollar=parseFloat(document.getElementById('f-risk-dollar').value)||null;
   let status='open';
   if(exit!=null) status=(!isNaN(pnl)?pnl:(dir==='long'?exit-entry:entry-exit))>=0?'win':'loss';
+  const openTime=document.getElementById('f-open-time').value||'';
+  const closeDate=document.getElementById('f-close-date').value||'';
+  const closeTime=document.getElementById('f-close-time').value||'';
+  const session=document.getElementById('f-session').value||'';
+  const duration=computeDuration(document.getElementById('f-date').value,openTime,closeDate,closeTime);
   const trade={
     id:editTradeId||Date.now(),symbol,
     date:document.getElementById('f-date').value,
+    openTime,closeDate,closeTime,session,duration,
     direction:dir,type:document.getElementById('f-type').value,
     entry,exit,
     sl:parseFloat(document.getElementById('f-sl').value)||null,
@@ -1838,6 +1923,11 @@ function editTrade(id){
   document.getElementById('f-direction').value=t.direction;
   document.getElementById('f-type').value=t.type;
   document.getElementById('f-emotion').value=t.emotion||'';
+  document.getElementById('f-session').value=t.session||'';
+  document.getElementById('f-open-time').value=t.openTime||'';
+  document.getElementById('f-close-date').value=t.closeDate||'';
+  document.getElementById('f-close-time').value=t.closeTime||'';
+  if(t.duration){const dw=document.getElementById('duration-display-wrap');const dd=document.getElementById('duration-display');if(dw)dw.style.display='block';if(dd)dd.textContent=t.duration;}
   const prev=document.getElementById('img-preview');
   if(t.img){prev.src=t.img;prev.style.display='block';document.getElementById('img-clear-wrap').style.display='block';}
   else{prev.style.display='none';document.getElementById('img-clear-wrap').style.display='none';}
@@ -2311,6 +2401,15 @@ function initCalcView(){
     if(el&&!el.value) el.value=eq;
   }
   runCalc();
+}
+
+// ── PWA Service Worker ──────────────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      console.log('SW registered');
+    }).catch(()=>{});
+  });
 }
 
 boot();
