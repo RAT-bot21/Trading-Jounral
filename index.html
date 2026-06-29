@@ -237,6 +237,28 @@ tbody tr:hover td{background:var(--bg2);cursor:pointer}
 .dash-acct-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .pill-btn{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border2);background:transparent;color:var(--text2);font-family:inherit;transition:all .15s}
 .pill-btn:hover{border-color:var(--green);color:var(--green)}
+/* RSI Scanner */
+.rsi-card{border-radius:var(--rl);padding:14px 16px;margin-bottom:10px;border:1px solid transparent;transition:transform .1s,box-shadow .1s;cursor:default}
+.rsi-card:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.rsi-bull-new{background:#0d2a4a;border-color:#1a5fa8;color:#c8dff5}
+.rsi-bull-old{background:#0a1e35;border-color:#0f3d6e;color:#8aaecc}
+.rsi-bear-new{background:#3a0a0a;border-color:#a01818;color:#f5c8c8}
+.rsi-bear-old{background:#280808;border-color:#6e0f0f;color:#cc8a8a}
+.rsi-forming{background:#2a1e00;border-color:#a06800;color:#f5d680}
+[data-theme="light"] .rsi-bull-new{background:#deeeff;border-color:#5090d0;color:#0a2a50}
+[data-theme="light"] .rsi-bull-old{background:#eaf2ff;border-color:#90b8e8;color:#1a4070}
+[data-theme="light"] .rsi-bear-new{background:#ffdddd;border-color:#d04040;color:#500a0a}
+[data-theme="light"] .rsi-bear-old{background:#ffeeee;border-color:#e09090;color:#701a1a}
+[data-theme="light"] .rsi-forming{background:#fff8e0;border-color:#d0a000;color:#503800}
+.rsi-pair{font-size:18px;font-weight:800;letter-spacing:-.3px}
+.rsi-tf-badge{display:inline-block;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;opacity:.85}
+.rsi-status{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;opacity:.8}
+.rsi-prices{font-size:12px;opacity:.75;margin-top:6px}
+.rsi-age{font-size:11px;opacity:.55;margin-top:3px}
+.rsi-server-url{font-family:'SF Mono',monospace;font-size:12px;padding:8px 12px;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--border2);width:100%;color:var(--text)}
+.rsi-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.rsi-live{background:#22c55e;box-shadow:0 0 6px #22c55e}
+.rsi-offline{background:var(--red)}
 @media(max-width:700px){
   .mg{grid-template-columns:repeat(2,1fr)}.crow{grid-template-columns:1fr}
   .fg{grid-template-columns:1fr}.fgrp.full{grid-column:span 1}
@@ -258,6 +280,7 @@ tbody tr:hover td{background:var(--bg2);cursor:pointer}
     <button class="nb" onclick="sw('notes',this)"><i class="ti ti-notebook"></i> Notes</button>
     <button class="nb" onclick="sw('cloud',this)"><i class="ti ti-cloud"></i> iCloud</button>
     <button class="nb" onclick="sw('calc',this)"><i class="ti ti-calculator"></i> Lot Calc</button>
+    <button class="nb" onclick="sw('rsi',this)"><i class="ti ti-activity"></i> RSI Scanner</button>
   </nav>
   <div class="topbar-right">
     <div class="acct-switcher" id="acctSwitcher">
@@ -685,6 +708,54 @@ tbody tr:hover td{background:var(--bg2);cursor:pointer}
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- RSI DIVERGENCE SCANNER -->
+  <div class="view" id="view-rsi">
+    <div class="shdr" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="stitle">RSI Divergence Scanner</span>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+          <span class="rsi-dot" id="rsi-status-dot" style="background:var(--text3)"></span>
+          <span id="rsi-status-text" style="color:var(--text3)">Not connected</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select class="fs" id="rsi-filter-dir" style="width:auto;font-size:12px;padding:5px 10px" onchange="renderRSI()">
+          <option value="all">All signals</option>
+          <option value="BULL">Bullish only</option>
+          <option value="BEAR">Bearish only</option>
+          <option value="FORMING">Forming only</option>
+        </select>
+        <select class="fs" id="rsi-filter-tf" style="width:auto;font-size:12px;padding:5px 10px" onchange="renderRSI()">
+          <option value="all">All timeframes</option>
+          <option value="M15">M15</option>
+          <option value="M30">M30</option>
+          <option value="H1">H1</option>
+          <option value="H4">H4</option>
+          <option value="D1">D1</option>
+        </select>
+        <button class="btn btn-sm" onclick="clearRSIAlerts()" style="color:var(--red)"><i class="ti ti-trash"></i> Clear all</button>
+        <button class="btn btn-sm btn-green" onclick="pollRSI(true)"><i class="ti ti-refresh"></i> Refresh</button>
+      </div>
+    </div>
+
+    <!-- Server config -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:10px">Server connection</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input class="rsi-server-url" id="rsi-server-input" placeholder="https://your-app.railway.app" style="flex:1;min-width:200px" oninput="saveRSIServer()">
+        <button class="btn btn-green btn-sm" onclick="pollRSI(true)"><i class="ti ti-plug"></i> Connect</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">Paste your Railway / Render server URL above. The scanner polls every 30 seconds when connected.</div>
+    </div>
+
+    <!-- Alert counts -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px" id="rsi-counts"></div>
+
+    <!-- Alert grid -->
+    <div id="rsi-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px"></div>
+    <div id="rsi-empty" style="display:none" class="empty"><i class="ti ti-activity"></i>No divergence alerts yet.<br><span style="font-size:12px">Alerts will appear here when TradingView sends them.</span></div>
   </div>
 
 </div>
@@ -2252,6 +2323,7 @@ function sw(v,btn){
   if(v==='trades')filterTrades(filterVal);
   if(v==='import')document.getElementById('import-acct-label').textContent=curAcct().name;
   if(v==='calc')initCalcView();
+  if(v==='rsi')initRSI();
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -2401,6 +2473,210 @@ function initCalcView(){
     if(el&&!el.value) el.value=eq;
   }
   runCalc();
+}
+
+// ══════════════════════════════════════════════
+// RSI DIVERGENCE SCANNER
+// Connects to your Express server (Railway/Render)
+// and displays live TradingView divergence alerts
+// ══════════════════════════════════════════════
+const RSI_STORE = 'tradelog_rsi_v1';
+const RSI_SERVER_KEY = 'tradelog_rsi_server';
+let rsiAlerts = [];
+let rsiPollTimer = null;
+let rsiConnected = false;
+
+function loadRSIAlerts(){
+  try{ rsiAlerts = JSON.parse(localStorage.getItem(RSI_STORE))||[]; }catch(e){ rsiAlerts=[]; }
+}
+function saveRSIAlerts(){
+  localStorage.setItem(RSI_STORE, JSON.stringify(rsiAlerts));
+}
+function saveRSIServer(){
+  const url = document.getElementById('rsi-server-input')?.value?.trim()||'';
+  localStorage.setItem(RSI_SERVER_KEY, url);
+}
+function loadRSIServer(){
+  const url = localStorage.getItem(RSI_SERVER_KEY)||'';
+  const el = document.getElementById('rsi-server-input');
+  if(el && url) el.value = url;
+  return url;
+}
+
+function initRSI(){
+  loadRSIAlerts();
+  const url = loadRSIServer();
+  renderRSI();
+  if(url) pollRSI(false);
+}
+
+async function pollRSI(manual=false){
+  const url = (document.getElementById('rsi-server-input')?.value?.trim() || loadRSIServer()).replace(/\/$/,'');
+  if(!url){ setRSIStatus(false,'No server URL set'); return; }
+  try{
+    const res = await fetch(url+'/api/alerts', {signal: AbortSignal.timeout(8000)});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    // Merge — avoid duplicates by id
+    const existing = new Set(rsiAlerts.map(a=>a.id));
+    let added = 0;
+    (Array.isArray(data)?data:[]).forEach(a=>{
+      if(!existing.has(a.id)){ rsiAlerts.unshift(a); added++; }
+    });
+    // Sort newest first
+    rsiAlerts.sort((a,b)=>new Date(b.ts||b.time||0)-new Date(a.ts||a.time||0));
+    saveRSIAlerts();
+    setRSIStatus(true, `Live · ${rsiAlerts.length} alerts${added>0?' · +'+added+' new':''}`);
+    renderRSI();
+  }catch(err){
+    setRSIStatus(false, manual?'Could not connect — check URL':'Offline');
+  }
+  // Schedule next poll every 30s
+  clearTimeout(rsiPollTimer);
+  rsiPollTimer = setTimeout(()=>pollRSI(false), 30000);
+}
+
+function setRSIStatus(ok, msg){
+  rsiConnected = ok;
+  const dot = document.getElementById('rsi-status-dot');
+  const txt = document.getElementById('rsi-status-text');
+  if(dot){ dot.className='rsi-dot '+(ok?'rsi-live':'rsi-offline'); }
+  if(txt){ txt.textContent=msg; txt.style.color=ok?'var(--green)':'var(--red)'; }
+}
+
+function rsiCardClass(dir, status, idx){
+  if(status==='FORMING') return 'rsi-card rsi-forming';
+  if(dir==='BULL') return idx===0?'rsi-card rsi-bull-new':'rsi-card rsi-bull-old';
+  if(dir==='BEAR') return idx===0?'rsi-card rsi-bear-new':'rsi-card rsi-bear-old';
+  return 'rsi-card';
+}
+
+function tfColor(tf){
+  const map={M15:'#5b8cff',M30:'#7b6fff',H1:'#a855f7',H4:'#ec4899',D1:'#f97316'};
+  return map[tf]||'#888';
+}
+
+function rsiAge(ts){
+  if(!ts) return '';
+  const ms = Date.now() - new Date(ts).getTime();
+  const m=Math.floor(ms/60000),h=Math.floor(m/60),d=Math.floor(h/24);
+  if(d>0) return d+'d ago';
+  if(h>0) return h+'h ago';
+  if(m>0) return m+'m ago';
+  return 'just now';
+}
+
+function renderRSI(){
+  const dirFilter = document.getElementById('rsi-filter-dir')?.value||'all';
+  const tfFilter  = document.getElementById('rsi-filter-tf')?.value||'all';
+
+  let list = [...rsiAlerts];
+  if(dirFilter!=='all') list=list.filter(a=>a.direction===dirFilter);
+  if(tfFilter!=='all')  list=list.filter(a=>a.tf===tfFilter);
+
+  // Counts
+  const counts = document.getElementById('rsi-counts');
+  if(counts){
+    const bull=rsiAlerts.filter(a=>a.direction==='BULL'&&a.status==='CONFIRMED').length;
+    const bear=rsiAlerts.filter(a=>a.direction==='BEAR'&&a.status==='CONFIRMED').length;
+    const form=rsiAlerts.filter(a=>a.status==='FORMING').length;
+    const total=rsiAlerts.length;
+    counts.innerHTML=`
+      <div style="background:var(--bg);border:0.5px solid var(--border);border-radius:var(--r);padding:12px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--text)">${total}</div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Total</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid #1a5fa8;border-radius:var(--r);padding:12px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:#5090d0">${bull}</div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Bullish</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid #a01818;border-radius:var(--r);padding:12px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:#e05050">${bear}</div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Bearish</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid #a06800;border-radius:var(--r);padding:12px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:#d0a000">${form}</div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Forming</div>
+      </div>`;
+  }
+
+  const grid = document.getElementById('rsi-grid');
+  const empty = document.getElementById('rsi-empty');
+  if(!grid) return;
+
+  if(!list.length){
+    grid.innerHTML=''; if(empty) empty.style.display='block'; return;
+  }
+  if(empty) empty.style.display='none';
+
+  // Track index per direction for colour (newest = dark, older = lighter)
+  const dirCount={BULL:0,BEAR:0,FORMING:0};
+
+  grid.innerHTML = list.map(a=>{
+    const dir = a.direction||'BULL';
+    const idx = dirCount[dir]||0;
+    dirCount[dir]=(idx+1);
+    const cls = rsiCardClass(dir, a.status||'CONFIRMED', idx);
+    const icon = dir==='BULL'?'↑':dir==='BEAR'?'↓':'◎';
+    const statusLabel = a.status==='FORMING'?'Forming':a.status==='CONFIRMED'?'Confirmed':'—';
+    const priceBlock = a.price1!=null
+      ? `<div class="rsi-prices">
+          Price: <strong>${a.price1}</strong>${a.price2!=null?' → <strong>'+a.price2+'</strong>':''}
+          &nbsp;·&nbsp;RSI: <strong>${a.rsi1!=null?Number(a.rsi1).toFixed(1):'—'}</strong>${a.rsi2!=null?' → <strong>'+Number(a.rsi2).toFixed(1)+'</strong>':''}
+         </div>` : '';
+    const noteBlock = a.note?`<div style="font-size:11px;opacity:.6;margin-top:4px;font-style:italic">${a.note}</div>`:'';
+    return `<div class="${cls}" onclick="rsiCardClick('${a.id||''}')">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <div>
+          <span class="rsi-pair">${icon} ${a.pair||'—'}</span>
+          <span class="rsi-tf-badge" style="background:${tfColor(a.tf)};color:#fff;margin-left:7px">${a.tf||'—'}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+          <span class="rsi-status">${statusLabel}</span>
+          <button onclick="event.stopPropagation();deleteRSIAlert('${a.id||''}')" style="background:none;border:none;cursor:pointer;opacity:.4;font-size:13px;padding:0;color:inherit" title="Delete">✕</button>
+        </div>
+      </div>
+      ${priceBlock}
+      ${noteBlock}
+      <div class="rsi-age">${rsiAge(a.ts||a.time)}</div>
+    </div>`;
+  }).join('');
+}
+
+function rsiCardClick(id){
+  // Pre-fill log trade from divergence signal
+  const a = rsiAlerts.find(x=>(x.id||'')=== id);
+  if(!a||!a.price2) return;
+  openTradeModal();
+  setTimeout(()=>{
+    document.getElementById('f-symbol').value = (a.pair||'').replace('/','');
+    document.getElementById('f-direction').value = a.direction==='BULL'?'long':'short';
+    document.getElementById('f-entry').value = a.price2||'';
+    document.getElementById('f-type').value = 'Forex';
+    document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+    document.getElementById('f-open-time').value = new Date().toTimeString().slice(0,5);
+    document.getElementById('f-strategy').value = 'RSI Divergence';
+    calcRR();
+  }, 80);
+}
+
+function deleteRSIAlert(id){
+  rsiAlerts = rsiAlerts.filter(a=>(a.id||'')!==id);
+  saveRSIAlerts();
+  renderRSI();
+  // Also delete from server if connected
+  const url = (document.getElementById('rsi-server-input')?.value?.trim()||loadRSIServer()).replace(/\/$/,'');
+  if(url && id) fetch(url+'/api/alerts/'+id,{method:'DELETE'}).catch(()=>{});
+}
+
+function clearRSIAlerts(){
+  if(!rsiAlerts.length) return;
+  if(!confirm('Clear all '+rsiAlerts.length+' alerts?')) return;
+  rsiAlerts=[];
+  saveRSIAlerts();
+  renderRSI();
+  const url = (document.getElementById('rsi-server-input')?.value?.trim()||loadRSIServer()).replace(/\/$/,'');
+  if(url) fetch(url+'/api/alerts',{method:'DELETE'}).catch(()=>{});
 }
 
 // ── PWA Service Worker ──────────────────────────
